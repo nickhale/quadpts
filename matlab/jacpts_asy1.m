@@ -1,5 +1,24 @@
 function [x w v t] = jacpts_asy1(n,a,b,mint)
 
+%**************************************************************************
+%   This file is part of QUADPTS.
+%   Copyright (c) 2012 Nick Hale and Alex Townsend
+%   
+%   This program is free software: you can redistribute it and/or modify
+%   it under the terms of the GNU General Public License as published by
+%   the Free Software Foundation, either version 3 of the License, or
+%   (at your option) any later version.
+%   
+%   This program is distributed in the hope that it will be useful,
+%   but WITHOUT ANY WARRANTY; without even the implied warranty of
+%   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%   GNU General Public License for more details.
+%   
+%   You should have received a copy of the GNU General Public License
+%   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+% 
+%**************************************************************************
+
 % Approximate roots via asymptotic formula.
 K = (2*(n:-1:1)+a-.5)*pi/(2*n+a+b+1);
 tt = K + 1/(2*n+a+b+1)^2*((.25-a^2)*cot(.5*K)-(.25-b^2)*tan(.5*K));

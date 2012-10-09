@@ -1,3 +1,22 @@
+/*******************************************************************************
+ * This file is part of QUADPTS.
+ * Copyright (c) 2012 Nick Hale and Alex Townsend
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ ******************************************************************************/
+
 #include <mex.h>
 #include <math.h>
 
@@ -111,7 +130,7 @@ int asy1(double *nodes, double*weights, unsigned long int n)
             if (iter++ > ITER_MAX) { break; } 
         }
         feval(n, t, C, &f, &fp, k);            /* Once more for luck */
-        if ( dt!=0) {
+        if ( dt!=0 ) {
             t += f/fp;
         }
         
@@ -141,22 +160,24 @@ int feval(int n, double theta, double C, double* f, double* fp, int k)
     int m;
     
     /* m = 0 */
-    alpha = (n + 0.5)*theta - 0.25*PI;
     denom = sqrtl(2.0*sinT);
-    /*cosA = cos(alpha);*/
+    
+    /*alpha = (n + 0.5)*theta - 0.25*PI;
+    cosA = cos(alpha);
+    sinA = sin(alpha);*/
     mycosA(n, theta, &cosA, &sinA, k);
-    sinA = sin(alpha);
+    
     *f = C * cosA/denom;
     *fp = C * ( 0.5*(cosA*cotT+sinA) + n*sinA) / denom;
     
     /* Loop over m until term is sufficiently small */
     for ( m = 1; m <= M; m++ ) {
-        C *= (2.0*m-1.0)/(2.0*m)*(m-0.5)/(n+m+0.5);
+        C *= (1.0-0.5/m)*(m-0.5)/(n+m+0.5);
         denom *= 2.0*sinT;
         
-        /* alpha += theta - 0.5*PI;
+        /*alpha += theta - 0.5*PI;
         cosA = cos(alpha);
-        sinA = sin(alpha); */
+        sinA = sin(alpha);*/
         
         tmp = cosA*sinT + sinA*cosT;
         sinA = sinA*sinT - cosA*cosT;
@@ -175,13 +196,12 @@ int feval(int n, double theta, double C, double* f, double* fp, int k)
 
 int mycosA(int n, double theta, double* cosA, double* sinA, int k) {
         int j;
-        double dh, tmp = 0.0, DH, dh2, lo, hi = theta;
-        double k025 = (k-.25), rho = n+.5, sgn = 1.0, fact = 1.0;        
+        double dh, tmp = 0.0, DH, dh2, lo, hi = theta, fixsgn = (double)(1-2*(k%2));
+        double k025 = (k-.25), rho = n+.5, sgn = 1.0, fact = 1.0, hi2;         
         
         /* bit shift to get a hi-lo version of theta */
-        int * ptr = (int *) (& hi);
-        *ptr <<= 8;
-        lo = theta - hi;                
+        hi = (double)((float)hi);
+        lo = theta - hi;  
         dh = (hi*rho-k025*PI_HI) + lo*rho - k025*PI_LO;
         /* easy way: dh = (n+0.5)*theta-(k-.25)*PI; */
         
@@ -190,9 +210,18 @@ int mycosA(int n, double theta, double* cosA, double* sinA, int k) {
             tmp += sgn*DH/fact;
             sgn = -sgn;
             fact = fact*(double)((2*j+3)*(2*j+2));
-            DH = DH*dh2;
+            DH *= dh2;
         }
-        *cosA = tmp*(double)(1-2*(k%2));
+        *cosA = tmp*fixsgn;
+        
+        tmp = 0.0; sgn = 1.0; fact = 1.0; DH = 1.0;
+        for ( j = 0; j <= 5; j++ ) {
+            tmp += sgn*DH/fact;
+            sgn = -sgn;
+            fact = fact*(double)((2*j+2)*(2*j+1));
+            DH *= dh2;
+        }
+        *sinA = -tmp*fixsgn;
         
     return 0;
 }
