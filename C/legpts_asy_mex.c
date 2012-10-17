@@ -34,11 +34,11 @@ int feval_asy1(int n, double theta, double C, double* f, double* fp, int k);
 int feval_asy2(int n, double t, double* f, double* fp);
 int mycosA(int n, double theta, double* cosA, double* sinA, int k);
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]);
-static double bessj0( double x );
-static double bessj1( double x );
 double clenshaw( double* c, int n, double x);
 double chebbessj0( double x );
 double chebbessj1( double x );
+double tB1( double x );
+double A2( double x );
 
 int asy(double *nodes, double*weights, unsigned long int n)
 {
@@ -178,6 +178,7 @@ int feval(int n, double theta, double C, double* f, double* fp, int k)
 
 double chebbessj0( double x )
 {
+    /* Chebyshev expansion on [0 31] */
    double coeffs[50] = {0.113905930122844,  -0.248029977895747,   
    0.216875874902150,  -0.210251640406686,   0.177883635103513,
   -0.121762914878623,   0.098895497651315,   0.012919886971102,
@@ -196,11 +197,12 @@ double chebbessj0( double x )
                    0,   0.000000000000000,  -0.000000000000000,
    0.000000000000000,   0.000000000000000,  -0.000000000000000};
    
-   return clenshaw(coeffs, 50, x);
+   return clenshaw(coeffs, 50, 2./31.*x-1.);
 }
 
 double chebbessj1( double x )
 {
+    /* Chebyshev expansion on [0 31] */
    double coeffs[50] = {0.042376943206206,  -0.130389123712321,
    0.052750018296831,  -0.074421155995637,  -0.028637713473499,
    0.017389752444885,  -0.107194432750030,   0.093954008691064,
@@ -218,27 +220,47 @@ double chebbessj1( double x )
   -0.000000000000005,  -0.000000000000000,   0.000000000000000,
    0.000000000000000,  -0.000000000000000,  -0.000000000000000,
   -0.000000000000000,                   0,                   0};
-   return clenshaw(coeffs, 50, x);
+   return clenshaw(coeffs, 50, 2./31.*x-1.);
+}
+
+double tB1( double x )
+{
+    /* Chebyshev expansion on [0 .5] */
+   double coeffs[10] = {0.001894863314419,   0.001931311486971,
+   0.000044175868501,   0.000007937411347,   0.000000235861687,
+   0.000000026985313,   0.000000000912562,   0.000000000076891,
+   0.000000000004309,   0.000000000000955};
+   return clenshaw(coeffs, 10, 4.*x-1.);
+}
+
+double A2( double x )
+{
+    /* Chebyshev expansion on [0 .5] */
+   double coeffs[10] = {0.000193442222401,   0.000261532806021,
+   0.000070849964269,   0.000003201466677,   0.000000460249018,
+   0.000000019730880,   0.000000001883998,   0.000000000217267,
+  -0.000000000055637,   0.000000000043205};
+   return clenshaw(coeffs, 10, 4.*x-1.);
 }
 
 double clenshaw( double* c, int n, double x) {
+    /* Clenshaw's rule for Chebyshev evlaution */
     double bk = 0., bk1 = 0., bk2 = 0.;
     int k;
 
-    x = (4./31.)*x - 2.;
     for (k = n-1; k > 0; k-- ) { 
-        bk = c[k] + x*bk1 - bk2;
+        bk = c[k] + 2.*x*bk1 - bk2;
         bk2 = bk1; 
         bk1 = bk;
     }
-    return c[0] + .5*x*bk1 - bk2;
+    return c[0] + x*bk1 - bk2;
 }
 
 
 int feval_asy2(int n, double t, double* f, double* fp) {   
     double dn = (double)n, rho = dn + .5, rho2 = dn - .5;
     double sint, csct, cost, cott, tinv;
-    double tB1t = 0., A2t = 0.;
+    double tB1t = 0., A2t = 0., foo;
     double Ja, Jab, Jb, Jbb, gt, gtdx, vals, vals2, ders, A1, tB0, denom, tmp;
 
     /* Evaluate bessel functions */
@@ -246,7 +268,7 @@ int feval_asy2(int n, double t, double* f, double* fp) {
     Jb = chebbessj1( rho*t );
     Jab = chebbessj0( rho2*t );
     Jbb = chebbessj1( rho2*t );
-    
+
     /* Evaluate functions for recurrsive definition of coefficients. */
     sint = sin(t);
     csct = 1/sint;
@@ -263,7 +285,6 @@ int feval_asy2(int n, double t, double* f, double* fp) {
     vals2 = Jab;
     
     /* second term: */
-    tB0 = .25*gt;
     vals = vals + Jb*tB0/rho;
     vals2 = vals2 + Jbb*tB0/rho2;
 
@@ -272,6 +293,13 @@ int feval_asy2(int n, double t, double* f, double* fp) {
     vals2 = vals2 + Jab*A1/(rho2*rho2);
     
     /* higher terms: */
+    tB1t = tB1(t);
+    vals = vals + Jb*tB1t/(rho*rho*rho); 
+    vals2 = vals2 + Jbb*tB1t/(rho*rho*rho); 
+    
+    A2t = A2(t);
+    vals = vals + Ja*A2t/(rho*rho*rho*rho); 
+    vals2 = vals2 + Jab*A2t/(rho*rho*rho*rho);
     
     /* combine */
     denom = sqrt(t*csct);
