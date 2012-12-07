@@ -17,7 +17,6 @@
  * 
  ******************************************************************************/
 
-#include <mex.h>
 #include <math.h>
 #include <stdio.h>
 #include <gsl/gsl_sf_bessel.h>
@@ -36,13 +35,13 @@ int feval(int n, double theta, double C, double* f, double* fp, int k, int flag)
 int feval_asy1(int n, double theta, double C, double* f, double* fp, int k);
 int feval_asy2(int n, double t, double* f, double* fp, int flag);
 int mycosA(int n, double theta, double* cosA, double* sinA, int k);
-void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]);
 double clenshaw( double* c, int n, double x);
 double besseltaylor( double x, double y );
 double tB1( double x );
 double A2( double x );
 double tB2( double x );
 double A3( double x );
+int main( void );
 
 int asy(double *nodes, double*weights, unsigned long int n)
 {
@@ -418,27 +417,33 @@ double besseltaylor(double t, double z)
     }
 
 /* The gateway function */
-void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+int main( void )
 {
   double *result_roots,*result_weights;
-  int n;
-  /*  Check for proper number of arguments */
-  if(nrhs!=1) 
-    mexErrMsgTxt("One input required.");
+  int n = 30, k;
   
-  /*  Create a pointer to the input matrix x  */
-  n = mxGetScalar(prhs[0]);
-  
-  /*  Set the output pointer to the output matrix */
-  plhs[0] = mxCreateDoubleMatrix(n,1, mxREAL);
-  plhs[1] = mxCreateDoubleMatrix(1,n, mxREAL);
-  
-  /*  Create a C++ pointer to a copy of the output matrix */
-  result_roots = mxGetPr(plhs[0]);
-  result_weights = mxGetPr(plhs[1]);
+  result_roots = (double *)malloc( n*sizeof(double) );
+  result_weights = (double *)malloc( n*sizeof(double) );
   
   /*  Call the C++ subroutine */
   asy(result_roots,result_weights,n);
   
-  return;
+  /* Print to screen */!
+  printf("x = \n");
+  for ( k=0 ; k<n ; k++ ) {
+      printf(" %16.16f\n", result_roots[k]);
+  }
+  
+  printf("w = \n");
+  for ( k=0 ; k<n ; k++ ) {
+      printf(" %16.16f\n", result_weights[k]);
+  }
+  
+  /* Free memory */
+  free(result_roots);
+  free(result_weights);
+  result_roots = NULL;
+  result_weights = NULL;
+  
+  return(0);
 }
