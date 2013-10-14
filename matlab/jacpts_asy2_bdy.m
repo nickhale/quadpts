@@ -1,4 +1,4 @@
-function [x w v t] = jacpts_asy2_bdy(n,a,b,npts)
+function [x, w, v, t] = jacpts_asy2_bdy(n, a, b, npts)
 
 %**************************************************************************
 %   This file is part of QUADPTS.
@@ -19,18 +19,19 @@ function [x w v t] = jacpts_asy2_bdy(n,a,b,npts)
 % 
 %**************************************************************************
 
-% if npts > ceil((n+1)/2)
-%     error('NPTS must be <= N/2');
-% end
+if ( npts > ceil((n+1)/2) )
+    error('NPTS must be <= N/2');
+end
 
 % Useful constants
-rho = n + .5*(a + b + 1); rho2 = n + .5*(a + b - 1);
+rho = n + .5*(a + b + 1); 
+rho2 = n + .5*(a + b - 1);
 
 smallk = min(30,npts);
 % Use GLR for finding the first bessel roots
 jk = besselroots(a,min(npts,smallk));
 % use asy formula for larger ones (See NIST 10.21.19, Olver 74 p247)
-if npts > smallk
+if ( npts > smallk )
     mu = 4*a^2;
     a8 = 8*((length(jk)+1:npts).'+.5*a-.25)*pi;
     jk2 = .125*a8-(mu-1)./a8 - 4*(mu-1)*(7*mu-31)/3./a8.^3 - ...
@@ -46,48 +47,29 @@ t = phik + ((a^2-.25)*(1-phik.*cot(phik))./(8*phik) - ...
     .25*(a^2-b^2)*tan(.5*phik))/rho^2;
 
 % Only first half, x > 0
-if any(t > pi/2), warning('jacpts_bdy:theta','Theta > pi/2'); end
+if ( any(t > 1.1*pi/2) ), warning('jacpts_bdy:theta', 'Theta > pi/2'); end
 
-% [tB1 A2] = asy2_higherterms(a,b);
-[tB1 A2 tB2 A3] = asy2_higherterms(a,b);
-% [tB1 A2 tB2 A3 tB3 A4] = asy2_higherterms(0,0);
+[tB1, A2, tB2, A3] = asy2_higherterms(a, b);
 
 dt = inf; j = 0;
 % Newton iteration
 while norm(dt,inf) > sqrt(eps)/200
-    [vals ders] = feval_asy(n,t,0);    % Evaluate via asymptotic formula
+    [vals, ders] = feval_asy(n,t,0);    % Evaluate via asymptotic formula
     dt = vals./ders;                   % Newton update
     t = t + dt;                        % Next iterate
     j = j + 1; if j > 10, dt = 0; end  % Bail
 end
 
-% ab = a + b; x = cos(t);
-% P = .5*(a-b+(ab+2)*x);  Pm1 = 1; 
-% Pp = .5*(ab+2);         Ppm1 = 0; 
-% for k = 1:n-1
-%     A = 2*(k+1)*(k+ab+1)*(2*k+ab);
-%     B = (2*k+ab+1)*(a^2-b^2);
-%     C = prod(2*k+ab+(0:2)');
-%     D = 2*(k+a)*(k+b)*(2*k+ab+2);
-%     
-%     Pa1 = ( (B+C*x).*P - D*Pm1 ) / A;
-%     Ppa1 = ( (B+C*x).*Pp + C*P - D*Ppm1 ) / A;
-%     
-%     Pm1 = P; P = Pa1;  
-%     Ppm1 =  Pp; Pp = Ppa1;
-% end
-% t = acos(x-P./Pp);
-
-[ignored ders] = feval_asy(n,t,1);     % Evaluate via asymptotic formula
+[ignored, ders] = feval_asy(n,t,1);     % Evaluate via asymptotic formula
 
 % Constant for weights
-if a && b
+if ( a && b )
     if n > 50
         M = min(20,n-1); CW = 1; phi = -a*b/n;
         for m = 1:M
             CW = CW + phi;
             phi = -(m+a)*(m+b)/(m+1)/(n-m)*phi;
-            if abs(phi/CW) < eps/100, break, end
+            if ( abs(phi/CW) < eps/100), break, end
         end
     else
         CW = gamma(n+a+1)*gamma(n+b+1)/gamma(n+a+b+1)/factorial(n);
@@ -98,33 +80,29 @@ else
 end
 
 % flip
-t = t(npts:-1:1); ders = ders(npts:-1:1);% vals = vals(npts:-1:1);
-% Revert to x-space
-x = cos(t);      w = [CW./ders.^2].';   v = sin(t)./ders;
+t = t(npts:-1:1); 
+ders = ders(npts:-1:1);
+% vals = vals(npts:-1:1);
 
-    function [vals ders] = feval_asy(n,t,flag)
+% Revert to x-space
+x = cos(t);      
+w = (CW./ders.^2).';   
+v = sin(t)./ders;
+
+    function [vals, ders] = feval_asy(n,t,flag)
         
         % Useful constants
         A = (.25-a^2);       B = (.25-b^2);
         
         % Evaluate the Bessel functions
-        Ja = besselmx(double('J'),a,rho*t,0);
-        Jb = besselmx(double('J'),a+1,rho*t,0);
-        Jbb = besselmx(double('J'),a+1,rho2*t,0);
+        Ja = besselj(a,rho*t,0);
+        Jb = besselj(a+1,rho*t,0);
+        Jbb = besselj(a+1,rho2*t,0);
         if ~flag
-            Jab = besselmx(double('J'),a,rho2*t,0);
+            Jab = besselj(a,rho2*t,0);
         else
             % In the final step, perform accurate evaluation
-            Jab = besseltaylor(-t,rho*t);
-%             tmpa = Ja;
-%             tmpb = Jab;
-%             Ja = double(besselj(a,vpa(rho)*t));
-%             Jab = double(besselj(a,vpa(rho2)*t));
-%             semilogy(cos(t),abs(Ja-tmpa)./sin(t),'b'); hold on
-%             semilogy(cos(t),abs(Jab-tmpb)./sin(t),'r'); 
-%             Ja = tmpa; Jab = tmpb;
-%             title(['a = ' num2str(a) ', b = ', num2str(b)])
-%             figure
+            Jab = besseltaylor(-t, rho*t);
         end
 
         % Evaluate functions for recurrsive definition of coefficients.
@@ -180,8 +158,8 @@ x = cos(t);      w = [CW./ders.^2].';   v = sin(t)./ders;
         kmax = min(ceil(abs(log(eps)/log(norm(t,inf)))),30);
         H = bsxfun(@power,t,0:kmax).';
         % Compute coeffs in Taylor expansions about z (See NIST 10.6.7)
-        [nu JK] = meshgrid(-kmax:kmax, z);
-        Bjk = besselmx(double('J'),a+nu,JK,0);
+        [nu, JK] = meshgrid(-kmax:kmax, z);
+        Bjk = besselj(a+nu,JK,0);
         nck = abs(pascal(floor(1.25*kmax),1)); nck(1,:) = []; % nchoosek
         AA = [Bjk(:,kmax+1) zeros(npts,kmax)];
         fact = 1;
@@ -203,53 +181,50 @@ x = cos(t);      w = [CW./ders.^2].';   v = sin(t)./ders;
 
 end
 
-% j(1) = vpa('2.5574510185965304905903315638721353345562818990684132',64);
-% j(2) = vpa('5.6756963202731099020336037475172203722555749045325732',64);
-% j(3) = vpa('8.8099925220020443572462957670605946054738411139407751',64);
-% j(4) = vpa('11.948059752924419967228033420138143006090687505955351',64);
-% jk(1) = 2.5574510185965304;
-% jkb(1) = 3.408444291286342e-17;
-% jk(2) = 5.6756963202731099;
-% jkb(2) = 2.390986187939089e-16;
-% jk(3) = 8.8099925220020443;
-% jkb(3) = -1.665415490426429e-16;
-% jk(4) = 11.9480597529244199672280;
-% jkb(4) = -3.841773544987923e-16;
+function jk = besselroots(nu,m)
+    % Find m roots of besselj(nu,x)
+    
+    jk = zeros(m,1); foo = 3;
+    if ( nu == 0 )
+        xs = 2.404825557695773;
+    elseif ( nu > 0 )
+        % See Hethcote 1970
+        xs = nu + 1.8557*nu^(1/3);
+    else
+        nu1 = nu + 1;
+        % See Piessens 1984
+        xs = 2*sqrt(nu+1)*(1 + nu1/4 - 7*nu1^2/96  + 49*nu1^3/1152 - 8363*nu1/276480);
+        foo = min(max(2*ceil(abs(log10(nu1))),3),m);
+    end
 
+    % The first root
+    jk(1) = BesselNewton(nu,xs);
+    if ( m == 1 ), return, end
+    % The second root
+    jk(2) = BesselNewton(nu,jk(1)+.9*pi);
+    if (m == 2), return, end
+    % Some more roots
+    for k = 3:foo
+        jk(k) = BesselNewton(nu,jk(k-1)+.99*pi);
+    end
+    % The rest
+    for k = foo+1:m
+        jk(k) = BesselNewton(nu,jk(k-1)+pi);
+    end
 
-%     function [Ja Jab] = accurateBesselJ(a, tt)
-%         % Compute h = rho*t - jk accurately
-%         tta = double(single(tt));    ttb = tt - tta;
-%         rhoa = double(single(rho));  rhob = rho - rhoa;
-%         hi = rhoa*tta;               lo = rhoa*ttb + rhob*tt;
-%         h = (hi-jk) + lo;            h2 = h - tt;
-%         kmax = min(ceil(abs(log(eps)/log(norm(h2,inf)))),30);
-%         H = bsxfun(@power,h,0:kmax).';
-%         H2 = bsxfun(@power,h2,0:kmax).';
-% 
-%         % Compute coeffs in Taylor expansions about jk (See NIST 10.6.7)
-%         [nu JK] = meshgrid(-kmax:kmax, jk);
-%         Bjk = besselmx(double('J'),a+nu,JK,0);        
-% %         Bjk(1:min(7,npts),kmax+2) = double(besselj(a+1,vpa(jk(1:min(7,npts)))));
-% %         Bjk(:,kmax) = -Bjk(:,kmax+2);
-%         nck = abs(pascal(floor(1.25*kmax),1)); nck(1,:) = []; % nchoosek
-%         AA = [Bjk(:,kmax+1) zeros(npts,kmax)];  
-%         fact = 1;
-%         for k = 1:kmax
-%             sgn = -1;
-%             for l = 0:k
-%                 sgn = -sgn;
-%                 AA(:,k+1) = AA(:,k+1) + sgn*nck(k,l+1)*Bjk(:,kmax+2*l-k+1);
-%             end
-%             fact = k*fact;
-%             AA(:,k+1) = AA(:,k+1)/2^k/fact;
-%         end
-% 
-%         % Evaluate Taylor series
-%         Ja = zeros(npts,1); Jab = zeros(npts,1);
-%         for k = 1:npts
-%             Ja(k,1) = AA(k,:)*H(:,k);
-%             Jab(k,1) = AA(k,:)*H2(:,k);
-%         end
-%         
-%     end
+end
+
+function jk = BesselNewton(nu,jk)
+    % Use Newton iterations to find roots
+
+    dx = inf; j = 0;
+    while ( dx > sqrt(eps)/1000 )
+        u = besselj(nu,jk,0);
+        du = besselj(nu-1,jk,0)-nu/jk*u;
+        dx = u./du;
+        jk = jk - dx;
+        j = j+1;
+        if ( j > 20 ), break; end
+    end
+    
+end

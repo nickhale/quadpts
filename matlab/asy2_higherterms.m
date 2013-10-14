@@ -1,4 +1,4 @@
-function [tB1 A2 tB2 A3 tB3 A4] = asy2_higherterms(a,b,theta)
+function [tB1, A2, tB2, A3, tB3, A4] = asy2_higherterms(a, b, theta)
 
 %**************************************************************************
 %   This file is part of QUADPTS.
@@ -78,8 +78,8 @@ A2 = A2 - A2(1);
 
 %[tB1b A2b] = asy2_highertermsc(.1,-.3);
 
-if nargout < 3
-    if nargin == 3
+if ( nargout < 3 )
+    if ( nargin == 3 )
         % Evaluate for output
         tB1 = bary(theta,tB1,t,v);
         A2 = bary(theta,A2,t,v);
@@ -111,8 +111,8 @@ K = C*(f.*tB2);
 A3 = .5*(D*tB2) - (.5+a)*B2 - .5*K;
 A3 = A3 - A3(1);
 
-if nargout < 6
-    if nargin == 3
+if ( nargout < 6 )
+    if ( nargin == 3 )
         % Evaluate for output
         tB1 = bary(theta,tB1,t,v);
         A2 = bary(theta,A2,t,v);
@@ -148,7 +148,7 @@ K = C*(f.*tB3);
 A4 = .5*(D*tB3) - (.5+a)*B3 - .5*K;
 A4 = A4 - A4(1);
 
-if nargin == 3
+if ( nargin == 3 )
     % Evaluate for output
     tB1 = bary(theta,tB1,t,v);
     A2 = bary(theta,A2,t,v);
@@ -167,3 +167,112 @@ else
 end
 
 end
+
+function Q = cumsummat(N)
+% CUMSUMMAT  Chebyshev integration matrix.
+% Q = CUMSUMMAT(N) is the matrix that maps function values at N Chebyshev
+% points to values of the integral of the interpolating polynomial at
+% those points, with the convention that the first value is zero. 
+
+% Copyright 2011 by The University of Oxford and The Chebfun Developers. 
+% See http://www.maths.ox.ac.uk/chebfun/ for Chebfun information.
+
+N = N-1;
+
+% Matrix mapping coeffs -> values.
+T = cp2cdm(N);
+
+% Matrix mapping values -> coeffs.
+Tinv = cd2cpm(N);
+
+% Matrix mapping coeffs -> integral coeffs. Note that the highest order
+% term is truncated. 
+k = 1:N;
+k2 = 2*(k-1);  k2(1) = 1;  % avoid divide by zero
+B = diag(1./(2*k),-1) - diag(1./k2,1);
+v = ones(N,1); v(2:2:end) = -1;
+B(1,:) = sum( diag(v)*B(2:N+1,:), 1 );
+B(:,1) = 2*B(:,1); 
+
+Q = T*B*Tinv;               
+
+end
+
+function T = cp2cdm(N)
+% Values of Cheb. polys at Cheb nodes, x(n)=-cos(pi*n/N).
+theta = pi*(N:-1:0)'/N;
+T = cos( theta*(0:N) );
+end
+
+function C = cd2cpm(N)
+% Three steps: Double the data around the circle, apply the DFT matrix,
+% and then take half the result with 0.5 factor at the ends.
+theta = (pi/N)*(0:2*N-1)';
+F = exp( -1i*theta*(0:2*N-1) );  % DFT matrix
+rows = 1:N+1;  % output upper half only
+% Impose symmetries on data and coeffs.
+C = real( [ F(rows,N+1) F(rows,N:-1:2)+F(rows,N+2:2*N) F(rows,1) ] );
+C = C/N;  C([1 N+1],:) = 0.5*C([1 N+1],:);
+end
+  
+function D = diffmat(N,k)  
+% DIFFMAT  Chebyshev differentiation matrix
+% D = DIFFMAT(N) is the matrix that maps function values at N Chebyshev
+% points to values of the derivative of the interpolating polynomial at
+% those points. 
+%
+% D = DIFFMAT(N,K) is the same, but for the Kth derivative.
+%
+% The matrices are computed using the 'hybrid' formula of Schneider & 
+% Werner [1] and Welfert [2] proposed by Tee [3].
+
+% Copyright 2011 by The University of Oxford and The Chebfun Developers. 
+% See http://www.maths.ox.ac.uk/chebfun/ for Chebfun information.
+
+% References:
+%  [1] Schneider, C. and Werner, W., "Some new aspects of rational 
+%   interpolation", Math. Comp. (47) 285--299, 1986.
+%  [2] Welfert, B. D., "Generation of pseudospectral matrices I", SINUM,
+%   (34) 1640--1657.
+%  [3] Tee, T. W., "An adaptive rational spectral method for differential
+%   equations with rapidly varying solutions", Oxford DPhil Thesis, 2006.
+
+if ( nargin < 2 ), k = 1; end
+
+if ( N == 0 ), D = []; return, end
+if ( N == 1 ), D = 0; return, end
+
+% construct Chebyshev grid and weights
+m = N-1;
+x = sin(pi*(-m:2:m)/(2*m)).';       % Chebyshev points 
+w = [.5 ; ones(N-1,1)]; w(2:2:end) = -1; w(N) = .5*w(N);
+
+ii = (1:N+1:N^2)';              % indices of diagonal
+Dx = bsxfun(@minus,x,x');       % all pairwise differences
+Dx(ii) = Dx(ii) + 1;            % add identity
+Dxi = 1./Dx;                    % reciprocal 
+Dw = bsxfun(@rdivide,w.',w);    % pairwise divisions
+Dw(ii) = Dw(ii) - 1;            % subtract identity
+
+% k = 1
+D = Dw .* Dxi;
+D(ii) = 0; D(ii) = - sum(D,2);              % negative sum trick
+
+if ( k == 1 )
+    return
+end
+
+% k = 2
+D = 2*D .* (repmat(D(ii),1,N) - Dxi);
+D(ii) = 0; D(ii) = - sum(D,2);              % negative sum trick
+
+% higher orders
+for n = 3:k
+    D = n*Dxi .* (Dw.*repmat(D(ii),1,N) - D);
+    D(ii) = 0; D(ii) = - sum(D,2);          % negative sum trick
+end 
+
+end
+
+  
+  

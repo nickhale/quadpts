@@ -1,4 +1,4 @@
-function [x w v t] = jacpts_asy1(n,a,b,mint)
+function [x, w, v, t] = jacpts_asy1(n,a,b,mint)
 
 %**************************************************************************
 %   This file is part of QUADPTS.
@@ -24,33 +24,36 @@ K = (2*(n:-1:1)+a-.5)*pi/(2*n+a+b+1);
 tt = K + 1/(2*n+a+b+1)^2*((.25-a^2)*cot(.5*K)-(.25-b^2)*tan(.5*K));
 
 %% First half, x > 0
-t = tt(tt<=pi/2);
-if nargin == 3, mint = t(end-9);
-elseif mint == 0, mint = t(end-1); end
+t = tt(tt <= pi/2);
+if ( nargin == 3 )
+    mint = t(end-9);
+elseif ( mint == 0 )
+    mint = t(end-1); 
+end
 idx = 1:max(find(t<mint,1)-1,1);
 
 dt = inf; j = 0;
 % Newton iteration
-while norm(dt,inf) > sqrt(eps)/100
-    [vals ders] = feval_asy(n,a,b,t,idx,0); % Evaluate via asymptotic formulae
-    dt = vals./ders;                   % Newton update
-    t = t + dt;                        % Next iterate
+while ( norm(dt,inf) > sqrt(eps)/100 )
+    [vals, ders] = feval_asy(n, a, b, t, idx, 0); % Evaluate via asy formulae
+    dt = vals./ders;                              % Newton update
+    t = t + dt;                                   % Next iterate
     j = j + 1;
     dt = dt(idx);
-    if j > 10, dt = 0; end
+    if ( j > 10 ), dt = 0; end
 end
-[vals ders] = feval_asy(n,a,b,t,idx,1); % Once more for luck
+[vals, ders] = feval_asy(n, a, b, t, idx, 1);     % Once more for luck
 t = t + vals./ders;
 
 %%
 % Constant
-if a && b
-    if n > 50
+if ( a && b )
+    if ( n > 50 )
         M = min(20,n-1); C = 1; phi = -a*b/n;
         for m = 1:M
             C = C + phi;
             phi = -(m+a)*(m+b)/(m+1)/(n-m)*phi;
-            if abs(phi/C) < eps/100, break, end
+            if ( abs(phi/C) < eps/100 ), break, end
         end
     else
         C = gamma(n+a+1)*gamma(n+b+1)/gamma(n+a+b+1)/factorial(n);
@@ -70,29 +73,32 @@ t1 = t;
 %% Second half, x < 0
 tmp = a; a = b; b = tmp;
 t = pi - tt(1:(n-length(x)));
-if nargin == 3, mint = t(10);
-elseif mint == tt(2), mint = t(2); end
+if ( nargin == 3) 
+    mint = t(10);
+elseif ( mint == tt(2) )
+    mint = t(2); 
+end
 idx = max(find(t>mint,1),1):numel(t);
 
 dt = inf; j = 0;
 % Newton iteration
-while norm(dt,inf) > sqrt(eps)/100
-    [vals ders] = feval_asy(n,a,b,t,idx,0); % Evaluate via asymptotic formulae
-    dt = vals./ders;                  % Newton update
-    t = t + dt;                       % Next iterate
+while ( norm(dt,inf) > sqrt(eps)/100 )
+    [vals, ders] = feval_asy(n, a, b, t, idx, 0); % Evaluate via asy formulae
+    dt = vals./ders;                         % Newton update
+    t = t + dt;                              % Next iterate
     j = j + 1;
     dt = dt(idx);
     if j > 10, dt = 0; end
 end
-[vals ders] = feval_asy(n,a,b,t,idx,1); % Once more for luck
+[vals, ders] = feval_asy(n, a, b, t, idx, 1); % Once more for luck
 t = t + vals./ders;                  % Newton update
 
-x = [-cos(t) x].';
+x = [-cos(t), x].';
 w = [C./ders.^2 w];
 v = [sin(t)./ders v].';
-t = [t t1].';
+t = [t, t1].';
 
-function [vals ders] = feval_asy(n,a,b,t,idx,flag)
+function [vals, ders] = feval_asy(n, a, b, t, idx, flag)
 M = 20;
 
 % Some often used vectors/matrices
@@ -225,3 +231,7 @@ denom = 1./real(sin(t/2).^(a+.5).*cos(t/2).^(b+.5));
 % Compute the values and the derivatives
 vals = vals.*denom;
 ders = ders.*denom;
+
+end
+
+end

@@ -1,4 +1,4 @@
-function [x w v ders t] = legpts_asy1(n,mint)
+function [x, w, v, ders, t] = legpts_asy1(n,mint)
   
 %**************************************************************************
 %   This file is part of QUADPTS.
@@ -20,29 +20,29 @@ function [x w v ders t] = legpts_asy1(n,mint)
 %**************************************************************************
 
 % Approximate roots via asymptotic formula [Tricomi, 1950].
-isodd = mod(n,2);
-k = (n-2+isodd)/2+1:-1:1; theta = pi*(4*k-1)/(4*n+2);
+isOdd = mod(n,2);
+k = (n-2+isOdd)/2+1:-1:1; theta = pi*(4*k-1)/(4*n+2);
 x = (1-(n-1)/(8*n^3)-1/(384*n^4)*(39-28./sin(theta).^2)).*cos(theta);
 t = acos(x);
 
 % Minimum value of theta to be compute accurately by interior formula
-if nargin == 1
-    mint = t(end-9);                     % By default, ignore last 10
-elseif mint == 0
-    mint = t(end-1);                     % Ignore the last point
+if ( nargin == 1 )
+    mint = t(end-9);                      % By default, ignore last 10
+elseif ( mint == 0 )
+    mint = t(end-1);                      % Ignore the last point
 end
-idx = max(find(t<mint,1)-1,1);           % Index of minimum theta
+idx = max(find(t<mint,1)-1, 1);           % Index of minimum theta
 
 dt = inf; j = 0;
-while norm(dt,inf) > sqrt(eps)/1000      % Newton iteration   
-    [vals ders] = feval_asy(n,t,mint,0); % Evaluate via asymptotic formulae
-    dt = vals./ders;                     % Newton update
-    t = t - dt;                          % Next iterate
-    j = j+1;
+while norm(dt,inf) > sqrt(eps)/1000       % Newton iteration   
+    [vals, ders] = feval_asy(n,t,mint,0); % Evaluate via asymptotic formulae
+    dt = vals./ders;                      % Newton update
+    t = t - dt;                           % Next iterate
+    j = j + 1;
     dt = dt(1:idx-1);
-    if j > 10, dt = 0; end
+    if ( j > 10 ), dt = 0; end
 end
-[vals,ders] = feval_asy(n,t,mint,1);     % Once more for luck
+[vals,ders] = feval_asy(n, t, mint, 1);  % Once more for luck
 t = t - vals./ders;                      % Newton update
     
 % Revert to x-space and compute weights
@@ -51,7 +51,7 @@ w = 2./ders.^2;
 v = sin(t)./ders;
 
 % Flip using symetry for negative nodes
-if isodd
+if ( isOdd )
     x = [-x(end:-1:2) x].';
     w = [w(end:-1:2) w];
     v = [v(end:-1:2) v].';
@@ -63,8 +63,10 @@ else
     ders = [ders(end:-1:1) ders].';
 end
 
+end
 
-function [vals ders] = feval_asy(n,t,mint,flag)
+
+function [vals, ders] = feval_asy(n,t,mint,flag)
 M = 20;  % Maximum number of terms
 
 % Coefficients in expansion.
@@ -104,7 +106,7 @@ cosAlpha = cos(alpha);
 sinAlpha = sin(alpha);
 
 % Accurate computation of cos(alpha(1,:)) via Taylor series
-if flag
+if ( flag )
     k = numel(t):-1:1;
     rho = n+.5;
     % Accurate computation of rho*theta-(k-.25)*pi
@@ -136,4 +138,6 @@ vals = C*(c*(cosAlpha./denom));    % Sum up all the terms
 % Compute the derivatives
 numer = M05onesT.*(cosAlpha.*onesMcotT + sinAlpha) + n*sinAlpha;
 ders = -C*(c*(numer./denom));      % Sum up all the terms (dP/dt)
+
+end
 

@@ -1,4 +1,4 @@
-function [x w] = legpts_asy(n)
+function [x, w] = legpts_asy(n)
 
 %**************************************************************************
 %   This file is part of QUADPTS.
@@ -19,18 +19,33 @@ function [x w] = legpts_asy(n)
 % 
 %**************************************************************************
 
-% Computes the legendre nodes and weights using asymptotic formulae and
+% Computes the lLegendre nodes and weights using asymptotic formulae and
 % Newton's method. 
 
-% interior
-[x w] = legpts_asy1(n);   
-
-% changeover
+% Changeover point:
 nbdy = 10;
 bdyidx1 = n-(nbdy-1):n;
 bdyidx2 = nbdy:-1:1;
 
-% boundary
-[xbdy wbdy] = legpts_asy2_bdy(n,nbdy);  
-x(bdyidx1) = xbdy;  w(bdyidx1) = wbdy;
-x(bdyidx2) = -xbdy; w(bdyidx2) = wbdy;
+if ( n <= 2*nbdy )
+    % Use only the boundary formula:
+    [xbdy, wbdy] = legpts_asy2_bdy(n, ceil(n/2));  
+    [xbdy2, wbdy2] = legpts_asy2_bdy(n, floor(n/2));  
+    x = [-xbdy2(end:-1:1) ; xbdy];
+    w = [wbdy2(end:-1:1),  wbdy];
+    return
+end
+
+% Interior algorithm:
+[x, w] = legpts_asy1(n);  
+
+% Boundary algorithm:
+[xbdy, wbdy] = legpts_asy2_bdy(n,nbdy);  
+
+% Output the result:
+x(bdyidx1) = xbdy;  
+w(bdyidx1) = wbdy;
+x(bdyidx2) = -xbdy; 
+w(bdyidx2) = wbdy;
+
+end
